@@ -22,8 +22,14 @@ type Credentials = {
 	password: string;
 };
 
-const SECRET = 'supersecretkey';
+// const SECRET = process.env.SECRET;
+const SECRET = "secretkey";
+if (!SECRET) {
+	throw new Error('Missing SECRET environment variable');
+}
+const JWT_SECRET: string = SECRET;
 const TOKEN_TTL = '5w';
+
 
 function getCredentials(body: unknown): Credentials | null {
 	if (!body || typeof body !== 'object') return null;
@@ -49,10 +55,10 @@ db.exec(`
     )
 `);
 
-db.exec(`
-	IF NOT EXISTS (SELECT * FROM admins WHERE login = 'admin123' AND password = '${bcrypt.hashSync('password123', 10)}')
-	INSERT INTO admins (login, password) VALUES ('admin123', '${bcrypt.hashSync('password123', 10)}')
-`);
+db.prepare('INSERT OR IGNORE INTO admins (login, password) VALUES (?, ?)').run(
+	'admin123',
+	bcrypt.hashSync('admin123', 10)
+);
 
 export function auth(
 	req: AuthenticatedRequest,
@@ -65,7 +71,7 @@ export function auth(
 	const token = header.split(' ')[1];
 
 	try {
-		req.user = jwt.verify(token, SECRET);
+		req.user = jwt.verify(token, JWT_SECRET);
 		next();
 	} catch (error) {
 		if (error instanceof TokenExpiredError) {
@@ -76,7 +82,7 @@ export function auth(
 	}
 }
 
-router.post('/register', async (req: Request, res: Response) => {
+router.post('/register', auth, async (req: Request, res: Response) => {
 	const credentials = getCredentials(req.body);
 	if (!credentials) return res.status(400).send('Missing credentials');
 
@@ -112,7 +118,7 @@ router.post('/login', async (req: Request, res: Response) => {
 	const valid = await bcrypt.compare(credentials.password, user.password);
 	if (!valid) return res.status(401).send('Invalid');
 
-	const token = jwt.sign({ id: user.id, username: user.login }, SECRET, {
+	const token = jwt.sign({ id: user.id, username: user.login }, JWT_SECRET, {
 		expiresIn: TOKEN_TTL
 	});
 

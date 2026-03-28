@@ -12,6 +12,6 @@ app.use(express.json());
 app.use('/v1/blog', blogRouter);
 app.use('/v1/admin_auth', adminAuthRouter);
 
-app.listen(port, () => {
+app.listen(port, '0.0.0.0', () => {
 	console.log(`Backend running at http://localhost:${port}`);
 });

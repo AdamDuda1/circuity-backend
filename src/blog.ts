@@ -1,5 +1,6 @@
 import { Request, Response, Router } from 'express';
 import Database from 'better-sqlite3';
+import {auth} from "./admin_auth";
 
 const router = Router();
 const db = new Database('circuity.db');
@@ -53,7 +54,7 @@ router.get('/read', (_req: Request, res: Response) => {
  * POST /b1/blog/create? - Create a new blog post with title, text, and media_link
  * Body: { title: string, text: string, media_link: string }
  */
-router.post('/create', (req: Request, res: Response) => {
+router.post('/create', auth,  (req: Request, res: Response) => {
 	try {
 		const {title, text, media_link} = req.body;
 
