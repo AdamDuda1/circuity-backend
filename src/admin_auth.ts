@@ -30,7 +30,6 @@ if (!SECRET) {
 const JWT_SECRET: string = SECRET;
 const TOKEN_TTL = '5w';
 
-
 function getCredentials(body: unknown): Credentials | null {
 	if (!body || typeof body !== 'object') return null;
 

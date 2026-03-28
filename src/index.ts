@@ -1,12 +1,36 @@
 import express from 'express';
-import cors from 'cors';
+import cors, { CorsOptions } from 'cors';
+import dotenv from 'dotenv';
 import blogRouter from './blog';
-import adminAuthRouter from './admin_auth'
+import adminAuthRouter from './admin_auth';
+
+dotenv.config();
 
 const app = express();
-const port = 2137;
+const port = Number(process.env.PORT ?? 2137);
 
-app.use(cors());
+const defaultAllowedOrigins = [
+	'https://circuity.deltos.space',
+	'http://localhost:3000',
+	'http://localhost:4200',
+	'http://localhost:5173'
+];
+
+const configuredOrigins = (process.env.CORS_ORIGINS ?? '')
+	.split(',')
+	.map((origin) => origin.trim())
+	.filter(Boolean);
+
+const allowedOrigins = configuredOrigins.length > 0 ? configuredOrigins : defaultAllowedOrigins;
+
+const corsOptions: CorsOptions = {
+	origin: allowedOrigins,
+	methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+	allowedHeaders: ['Content-Type', 'Authorization']
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(express.json());
 
 app.use('/v1/blog', blogRouter);
