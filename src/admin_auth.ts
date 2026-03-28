@@ -22,8 +22,22 @@ type Credentials = {
 	password: string;
 };
 
+type SqliteIndexInfo = {
+	seq: number;
+	name: string;
+	unique: number;
+	origin: string;
+	partial: number;
+};
+
+type SqliteIndexColumn = {
+	seqno: number;
+	cid: number;
+	name: string;
+};
+
 // const SECRET = process.env.SECRET;
-const SECRET = "secretkey";
+const SECRET = 'secretkey';
 if (!SECRET) {
 	throw new Error('Missing SECRET environment variable');
 }
@@ -42,7 +56,7 @@ function getCredentials(body: unknown): Credentials | null {
 	const login = rawLogin.trim();
 	if (!login || !rawPassword) return null;
 
-	return { login, password: rawPassword };
+	return {login, password: rawPassword};
 }
 
 db.exec(`
@@ -50,9 +64,51 @@ db.exec(`
     (
         id 			INTEGER PRIMARY KEY,
 	    login		TEXT NOT NULL UNIQUE,
-	    password	TEXT NOT NULL UNIQUE
+	    password	TEXT NOT NULL
     )
 `);
+
+function hasUniquePasswordConstraint(): boolean {
+	const indexes = db.prepare('PRAGMA index_list(admins)').all() as SqliteIndexInfo[];
+
+	return indexes.some((index) => {
+		if (index.unique !== 1) {
+			return false;
+		}
+
+		const columns = db.prepare(`PRAGMA index_info(${JSON.stringify(index.name)})`).all() as SqliteIndexColumn[];
+		return columns.some((column) => column.name === 'password');
+	});
+}
+
+function migrateAdminsTableIfNeeded(): void {
+	if (!hasUniquePasswordConstraint()) {
+		return;
+	}
+
+	const migrate = db.transaction(() => {
+		db.exec(`
+			CREATE TABLE admins_new
+			(
+				id INTEGER PRIMARY KEY,
+				login TEXT NOT NULL UNIQUE,
+				password TEXT NOT NULL
+			)
+		`);
+
+		db.exec(`
+			INSERT OR IGNORE INTO admins_new (id, login, password)
+			SELECT id, login, password FROM admins
+		`);
+
+		db.exec('DROP TABLE admins');
+		db.exec('ALTER TABLE admins_new RENAME TO admins');
+	});
+
+	migrate();
+}
+
+migrateAdminsTableIfNeeded();
 
 db.prepare('INSERT OR IGNORE INTO admins (login, password) VALUES (?, ?)').run(
 	'admin123',
@@ -65,7 +121,9 @@ export function auth(
 	next: NextFunction
 ) {
 	const header = req.headers['authorization'];
-	if (!header || !header.startsWith('Bearer ')) return res.sendStatus(401);
+	if (!header || !header.startsWith('Bearer ')) {
+		return res.status(401).json({error: 'Missing bearer token'});
+	}
 
 	const token = header.split(' ')[1];
 
@@ -74,22 +132,24 @@ export function auth(
 		next();
 	} catch (error) {
 		if (error instanceof TokenExpiredError) {
-			return res.status(401).json({ error: 'Token expired' });
+			return res.status(401).json({error: 'Token expired'});
 		}
 
-		res.sendStatus(403);
+		return res.status(403).json({error: 'Invalid token'});
 	}
 }
 
 router.post('/register', auth, async (req: Request, res: Response) => {
 	const credentials = getCredentials(req.body);
-	if (!credentials) return res.status(400).send('Missing credentials');
+	if (!credentials) {
+		return res.status(400).json({error: 'Missing credentials'});
+	}
 
 	const hashed = await bcrypt.hash(credentials.password, 10);
 
 	try {
 		db.prepare('INSERT INTO admins (login, password) VALUES (?, ?)').run(credentials.login, hashed);
-		res.send('User created');
+		res.json({message: 'User created'});
 	} catch (error) {
 		if (
 			error &&
@@ -97,31 +157,37 @@ router.post('/register', auth, async (req: Request, res: Response) => {
 			'code' in error &&
 			(error as { code?: string }).code?.startsWith('SQLITE_CONSTRAINT')
 		) {
-			return res.status(400).send('User exists');
+			return res.status(400).json({error: 'User exists'});
 		}
 
-		res.sendStatus(500);
+		return res.status(500).json({error: 'Internal server error'});
 	}
 });
 
 router.post('/login', async (req: Request, res: Response) => {
 	const credentials = getCredentials(req.body);
-	if (!credentials) return res.status(400).send('Missing credentials');
+	if (!credentials) {
+		return res.status(400).json({error: 'Missing credentials'});
+	}
 
 	const user = db
-		.prepare('SELECT id, login, password FROM admins WHERE login = ?')
-		.get(credentials.login) as AdminRow | undefined;
+	.prepare('SELECT id, login, password FROM admins WHERE login = ?')
+	.get(credentials.login) as AdminRow | undefined;
 
-	if (!user) return res.status(401).send('Invalid');
+	if (!user) {
+		return res.status(401).json({error: 'Invalid login or password'});
+	}
 
 	const valid = await bcrypt.compare(credentials.password, user.password);
-	if (!valid) return res.status(401).send('Invalid');
+	if (!valid) {
+		return res.status(401).json({error: 'Invalid login or password'});
+	}
 
-	const token = jwt.sign({ id: user.id, username: user.login }, JWT_SECRET, {
+	const token = jwt.sign({id: user.id, username: user.login}, JWT_SECRET, {
 		expiresIn: TOKEN_TTL
 	});
 
-	res.json({ token });
+	res.json({token});
 });
 
 
