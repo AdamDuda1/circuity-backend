@@ -2,7 +2,7 @@ import { NextFunction, Request, Response, Router } from 'express';
 import bcrypt from 'bcrypt';
 import Database from 'better-sqlite3';
 import path from 'path';
-import jwt, { JwtPayload } from 'jsonwebtoken';
+import jwt, { JwtPayload, TokenExpiredError } from 'jsonwebtoken';
 
 const router = Router();
 const db = new Database(path.resolve(process.cwd(), 'circuity.db'));
@@ -23,6 +23,7 @@ type Credentials = {
 };
 
 const SECRET = 'supersecretkey';
+const TOKEN_TTL = '5w';
 
 function getCredentials(body: unknown): Credentials | null {
 	if (!body || typeof body !== 'object') return null;
@@ -66,7 +67,11 @@ export function auth(
 	try {
 		req.user = jwt.verify(token, SECRET);
 		next();
-	} catch {
+	} catch (error) {
+		if (error instanceof TokenExpiredError) {
+			return res.status(401).json({ error: 'Token expired' });
+		}
+
 		res.sendStatus(403);
 	}
 }
@@ -107,7 +112,9 @@ router.post('/login', async (req: Request, res: Response) => {
 	const valid = await bcrypt.compare(credentials.password, user.password);
 	if (!valid) return res.status(401).send('Invalid');
 
-	const token = jwt.sign({ id: user.id, username: user.login }, SECRET);
+	const token = jwt.sign({ id: user.id, username: user.login }, SECRET, {
+		expiresIn: TOKEN_TTL
+	});
 
 	res.json({ token });
 });
