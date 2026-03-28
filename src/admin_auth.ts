@@ -22,20 +22,6 @@ type Credentials = {
 	password: string;
 };
 
-type SqliteIndexInfo = {
-	seq: number;
-	name: string;
-	unique: number;
-	origin: string;
-	partial: number;
-};
-
-type SqliteIndexColumn = {
-	seqno: number;
-	cid: number;
-	name: string;
-};
-
 // const SECRET = process.env.SECRET;
 const SECRET = 'secretkey';
 if (!SECRET) {
@@ -68,47 +54,6 @@ db.exec(`
     )
 `);
 
-function hasUniquePasswordConstraint(): boolean {
-	const indexes = db.prepare('PRAGMA index_list(admins)').all() as SqliteIndexInfo[];
-
-	return indexes.some((index) => {
-		if (index.unique !== 1) {
-			return false;
-		}
-
-		const columns = db.prepare(`PRAGMA index_info(${JSON.stringify(index.name)})`).all() as SqliteIndexColumn[];
-		return columns.some((column) => column.name === 'password');
-	});
-}
-
-function migrateAdminsTableIfNeeded(): void {
-	if (!hasUniquePasswordConstraint()) {
-		return;
-	}
-
-	const migrate = db.transaction(() => {
-		db.exec(`
-			CREATE TABLE admins_new
-			(
-				id INTEGER PRIMARY KEY,
-				login TEXT NOT NULL UNIQUE,
-				password TEXT NOT NULL
-			)
-		`);
-
-		db.exec(`
-			INSERT OR IGNORE INTO admins_new (id, login, password)
-			SELECT id, login, password FROM admins
-		`);
-
-		db.exec('DROP TABLE admins');
-		db.exec('ALTER TABLE admins_new RENAME TO admins');
-	});
-
-	migrate();
-}
-
-migrateAdminsTableIfNeeded();
 
 db.prepare('INSERT OR IGNORE INTO admins (login, password) VALUES (?, ?)').run(
 	'admin123',

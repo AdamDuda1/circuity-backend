@@ -1,9 +1,10 @@
 import { Request, Response, Router } from 'express';
 import Database from 'better-sqlite3';
 import {auth} from "./admin_auth";
+import path from "path";
 
 const router = Router();
-const db = new Database('circuity.db');
+const db = new Database(path.resolve(process.cwd()), 'circuity.db');
 
 db.exec(`
     CREATE TABLE IF NOT EXISTS blog
