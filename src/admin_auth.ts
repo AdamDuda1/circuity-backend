@@ -1,0 +1,111 @@
+import { NextFunction, Request, Response, Router } from 'express';
+import bcrypt from 'bcrypt';
+import Database from 'better-sqlite3';
+import path from 'path';
+import jwt, { JwtPayload } from 'jsonwebtoken';
+
+const router = Router();
+const db = new Database(path.resolve(process.cwd(), 'circuity.db'));
+
+type AdminRow = {
+	id: number;
+	login: string;
+	password: string;
+};
+
+type AuthenticatedRequest = Request & {
+	user?: string | JwtPayload;
+};
+
+type Credentials = {
+	login: string;
+	password: string;
+};
+
+const SECRET = 'supersecretkey';
+
+function getCredentials(body: unknown): Credentials | null {
+	if (!body || typeof body !== 'object') return null;
+
+	const payload = body as Record<string, unknown>;
+	const rawLogin = payload.login ?? payload.l;
+	const rawPassword = payload.password ?? payload.p;
+
+	if (typeof rawLogin !== 'string' || typeof rawPassword !== 'string') return null;
+
+	const login = rawLogin.trim();
+	if (!login || !rawPassword) return null;
+
+	return { login, password: rawPassword };
+}
+
+db.exec(`
+    CREATE TABLE IF NOT EXISTS admins
+    (
+        id 			INTEGER PRIMARY KEY,
+	    login		TEXT NOT NULL UNIQUE,
+	    password	TEXT NOT NULL UNIQUE
+    )
+`);
+
+export function auth(
+	req: AuthenticatedRequest,
+	res: Response,
+	next: NextFunction
+) {
+	const header = req.headers['authorization'];
+	if (!header || !header.startsWith('Bearer ')) return res.sendStatus(401);
+
+	const token = header.split(' ')[1];
+
+	try {
+		req.user = jwt.verify(token, SECRET);
+		next();
+	} catch {
+		res.sendStatus(403);
+	}
+}
+
+router.post('/register', async (req: Request, res: Response) => {
+	const credentials = getCredentials(req.body);
+	if (!credentials) return res.status(400).send('Missing credentials');
+
+	const hashed = await bcrypt.hash(credentials.password, 10);
+
+	try {
+		db.prepare('INSERT INTO admins (login, password) VALUES (?, ?)').run(credentials.login, hashed);
+		res.send('User created');
+	} catch (error) {
+		if (
+			error &&
+			typeof error === 'object' &&
+			'code' in error &&
+			(error as { code?: string }).code?.startsWith('SQLITE_CONSTRAINT')
+		) {
+			return res.status(400).send('User exists');
+		}
+
+		res.sendStatus(500);
+	}
+});
+
+router.post('/login', async (req: Request, res: Response) => {
+	const credentials = getCredentials(req.body);
+	if (!credentials) return res.status(400).send('Missing credentials');
+
+	const user = db
+		.prepare('SELECT id, login, password FROM admins WHERE login = ?')
+		.get(credentials.login) as AdminRow | undefined;
+
+	if (!user) return res.status(401).send('Invalid');
+
+	const valid = await bcrypt.compare(credentials.password, user.password);
+	if (!valid) return res.status(401).send('Invalid');
+
+	const token = jwt.sign({ id: user.id, username: user.login }, SECRET);
+
+	res.json({ token });
+});
+
+
+export default router;

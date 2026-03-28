@@ -7,11 +7,11 @@ const db = new Database('circuity.db');
 db.exec(`
     CREATE TABLE IF NOT EXISTS blog
     (
-        id         INTEGER PRIMARY KEY,
-        title      TEXT NOT NULL,
-        text       TEXT NOT NULL,
-        media_link TEXT NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        id			INTEGER PRIMARY KEY,
+        title		TEXT NOT NULL,
+        text		TEXT NOT NULL,
+        media_link	TEXT NOT NULL,
+        created_at	DATETIME DEFAULT CURRENT_TIMESTAMP
     )
 `);
 
