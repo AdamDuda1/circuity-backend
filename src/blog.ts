@@ -4,7 +4,7 @@ import {auth} from "./admin_auth";
 import path from "path";
 
 const router = Router();
-const db = new Database(path.resolve(process.cwd()), 'circuity.db');
+const db = new Database('circuity123.db'); //path.resolve(process.cwd())
 
 db.exec(`
     CREATE TABLE IF NOT EXISTS blog

@@ -84,6 +84,11 @@ export function auth(
 	}
 }
 
+router.get('/list_admins', auth, async (req: Request, res: Response) => {
+	const admins = db.prepare('SELECT id, login, password FROM admins').all() as {id: number; login: string; password: string}[];
+	res.json(admins);
+});
+
 router.post('/register', auth, async (req: Request, res: Response) => {
 	const credentials = getCredentials(req.body);
 	if (!credentials) {
