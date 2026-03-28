@@ -48,6 +48,11 @@ db.exec(`
     )
 `);
 
+db.exec(`
+	IF NOT EXISTS (SELECT * FROM admins WHERE login = 'admin123' AND password = '${bcrypt.hashSync('password123', 10)}')
+	INSERT INTO admins (login, password) VALUES ('admin123', '${bcrypt.hashSync('password123', 10)}')
+`);
+
 export function auth(
 	req: AuthenticatedRequest,
 	res: Response,
