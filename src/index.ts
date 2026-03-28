@@ -1,19 +1,14 @@
 import express from 'express';
 import cors, { CorsOptions } from 'cors';
-import dotenv from 'dotenv';
 import blogRouter from './blog';
 import adminAuthRouter from './admin_auth';
-
-dotenv.config();
 
 const app = express();
 const port = Number(process.env.PORT ?? 2137);
 
 const defaultAllowedOrigins = [
 	'https://circuity.deltos.space',
-	'http://localhost:3000',
-	'http://localhost:4200',
-	'http://localhost:5173'
+	'http://localhost:4200'
 ];
 
 const configuredOrigins = (process.env.CORS_ORIGINS ?? '')
@@ -30,7 +25,7 @@ const corsOptions: CorsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
+app.options('/{*any}', cors(corsOptions));
 app.use(express.json());
 
 app.use('/v1/blog', blogRouter);
