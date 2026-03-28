@@ -5,47 +5,48 @@ const router = Router();
 const db = new Database('circuity.db');
 
 db.exec(`
-  CREATE TABLE IF NOT EXISTS blog (
-    id INTEGER PRIMARY KEY,
-    title TEXT NOT NULL,
-    text TEXT NOT NULL,
-    media_link TEXT NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  )
+    CREATE TABLE IF NOT EXISTS blog
+    (
+        id         INTEGER PRIMARY KEY,
+        title      TEXT NOT NULL,
+        text       TEXT NOT NULL,
+        media_link TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
 `);
 
 /**
  * GET /v1/blog/single_post?id=123 - Fetch a single blog post by ID (or last post if without id)
  */
 router.get('/single_post', (req: Request, res: Response) => {
-  try {
-    const { id } = req.query;
+	try {
+		const {id} = req.query;
 
-    const query = id ? 'SELECT * FROM blog WHERE id = ?' : 'SELECT * FROM blog';
-    const stmt = db.prepare(query);
-    const post = id ? stmt.get(id) : stmt.get();
+		const query = id ? 'SELECT * FROM blog WHERE id = ?' : 'SELECT * FROM blog';
+		const stmt = db.prepare(query);
+		const post = id ? stmt.get(id) : stmt.get();
 
-    if (post) {
-      res.json(post);
-    } else {
-      res.status(404).json({ error: 'Post not found' });
-    }
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch post' });
-  }
+		if (post) {
+			res.json(post);
+		} else {
+			res.status(404).json({error: 'Post not found'});
+		}
+	} catch (error) {
+		res.status(500).json({error: 'Failed to fetch post'});
+	}
 });
 
 /**
  * GET /v1/blog/read - Fetch all posts at once
  */
 router.get('/read', (_req: Request, res: Response) => {
-  try {
-    const stmt = db.prepare('SELECT * FROM blog');
-    const blogPosts = stmt.all();
-    res.json(blogPosts);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch posts' });
-  }
+	try {
+		const stmt = db.prepare('SELECT * FROM blog');
+		const blogPosts = stmt.all();
+		res.json(blogPosts);
+	} catch (error) {
+		res.status(500).json({error: 'Failed to fetch posts'});
+	}
 });
 
 /**
@@ -53,16 +54,16 @@ router.get('/read', (_req: Request, res: Response) => {
  * Body: { title: string, text: string, media_link: string }
  */
 router.post('/create', (req: Request, res: Response) => {
-  try {
-    const { title, text, media_link } = req.body;
+	try {
+		const {title, text, media_link} = req.body;
 
-    const stmt = db.prepare('INSERT INTO blog (title, text, media_link) VALUES (?, ?, ?)');
-    const info = stmt.run(title, text, media_link);
+		const stmt = db.prepare('INSERT INTO blog (title, text, media_link) VALUES (?, ?, ?)');
+		const info = stmt.run(title, text, media_link);
 
-    res.json({ status: 'success', info: info });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to post!!!!' });
-  }
+		res.json({status: 'success', info: info});
+	} catch (error) {
+		res.status(500).json({error: 'Failed to post!!!!'});
+	}
 });
 
 export default router;
