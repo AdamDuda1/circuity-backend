@@ -5,7 +5,8 @@ import path from 'path';
 import jwt, { JwtPayload, TokenExpiredError } from 'jsonwebtoken';
 
 const router = Router();
-const db = new Database(path.resolve(process.cwd(), 'circuity.db'));
+const dbPath = process.env.DB_PATH ?? path.resolve(process.cwd(), 'circuity.db');
+const db = new Database(dbPath);
 
 type AdminRow = {
 	id: number;
@@ -22,8 +23,7 @@ type Credentials = {
 	password: string;
 };
 
-// const SECRET = process.env.SECRET;
-const SECRET = 'secretkey';
+const SECRET = process.env.SECRET ?? 'secretkey123';
 if (!SECRET) {
 	throw new Error('Missing SECRET environment variable');
 }

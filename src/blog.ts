@@ -4,7 +4,8 @@ import {auth} from "./admin_auth";
 import path from "path";
 
 const router = Router();
-const db = new Database('circuity123.db'); //path.resolve(process.cwd())
+const dbPath = process.env.DB_PATH ?? path.resolve(process.cwd(), 'circuity.db');
+const db = new Database(dbPath);
 
 db.exec(`
     CREATE TABLE IF NOT EXISTS blog
@@ -42,10 +43,19 @@ router.get('/single_post', (req: Request, res: Response) => {
 /**
  * GET /v1/blog/read - Fetch all posts at once
  */
-router.get('/read', (_req: Request, res: Response) => {
+router.get('/read', (req: Request, res: Response) => {
 	try {
-		const stmt = db.prepare('SELECT * FROM blog');
-		const blogPosts = stmt.all();
+		const limitValue = Number(req.query.limit ?? 20);
+		const pageValue = Number(req.query.page ?? 1);
+
+		const limit = Number.isFinite(limitValue) ? Math.min(Math.max(limitValue, 1), 100) : 20;
+		const page = Number.isFinite(pageValue) ? Math.max(pageValue, 1) : 1;
+		const offset = (page - 1) * limit;
+
+		const stmt = db.prepare(
+			'SELECT id, title, text, media_type, media_link, created_at FROM blog ORDER BY created_at DESC LIMIT ? OFFSET ?'
+		);
+		const blogPosts = stmt.all(limit, offset);
 		res.json(blogPosts);
 	} catch (error) {
 		res.status(500).json({error: 'Failed to fetch posts'});
