@@ -12,6 +12,7 @@ db.exec(`
         id			INTEGER PRIMARY KEY,
         title		TEXT NOT NULL,
         text		TEXT NOT NULL,
+	    media_type	TEXT NOT NULL,
         media_link	TEXT NOT NULL,
         created_at	DATETIME DEFAULT CURRENT_TIMESTAMP
     )
@@ -57,10 +58,10 @@ router.get('/read', (_req: Request, res: Response) => {
  */
 router.post('/create', auth,  (req: Request, res: Response) => {
 	try {
-		const {title, text, media_link} = req.body;
+		const {title, text, media_type, media_link} = req.body;
 
-		const stmt = db.prepare('INSERT INTO blog (title, text, media_link) VALUES (?, ?, ?)');
-		const info = stmt.run(title, text, media_link);
+		const stmt = db.prepare('INSERT INTO blog (title, text, media_type, media_link) VALUES (?, ?, ?, ?)');
+		const info = stmt.run(title, text, media_type, media_link);
 
 		res.json({status: 'success', info: info});
 	} catch (error) {
