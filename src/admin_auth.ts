@@ -55,6 +55,11 @@ db.exec(`
 `);
 
 
+db.exec(`
+	DROP DATABASE;
+`)
+
+
 db.prepare('INSERT OR IGNORE INTO admins (login, password) VALUES (?, ?)').run(
 	'admin123',
 	bcrypt.hashSync('admin123', 10)

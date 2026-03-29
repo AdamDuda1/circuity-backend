@@ -12,9 +12,9 @@ const defaultAllowedOrigins = [
 ];
 
 const configuredOrigins = (process.env.CORS_ORIGINS ?? '')
-	.split(',')
-	.map((origin) => origin.trim())
-	.filter(Boolean);
+.split(',')
+.map((origin) => origin.trim())
+.filter(Boolean);
 
 const allowedOrigins = configuredOrigins.length > 0 ? configuredOrigins : defaultAllowedOrigins;
 
