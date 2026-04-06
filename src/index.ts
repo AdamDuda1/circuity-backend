@@ -2,6 +2,7 @@ import express from 'express';
 import cors, { CorsOptions } from 'cors';
 import blogRouter from './blog';
 import adminAuthRouter from './admin_auth';
+import projectsRouter from './projects';
 
 const app = express();
 const port = Number(process.env.PORT ?? 2137);
@@ -30,6 +31,7 @@ app.use(express.json());
 
 app.use('/v1/blog', blogRouter);
 app.use('/v1/admin_auth', adminAuthRouter);
+app.use('/v1/projects', projectsRouter);
 
 app.listen(port, '0.0.0.0', () => {
 	console.log(`Backend running at http://localhost:${port}`);

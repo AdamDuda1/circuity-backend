@@ -13,12 +13,12 @@ db.exec(`
         id			INTEGER PRIMARY KEY,
         title		TEXT NOT NULL,
         text		TEXT NOT NULL,
-	    media_type	TEXT NOT NULL,
+	    media_type	TEXT,
         media_link	TEXT NOT NULL,
         created_at	DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
-	CREATE TABLE IF NOT EXISTS comments
+	CREATE TABLE IF NOT EXISTS blog_comments
     (
         id			INTEGER PRIMARY KEY,
 	    post_id		INTEGER REFERENCES blog(id) ON DELETE CASCADE,
@@ -98,8 +98,8 @@ router.get('/read_comments', (req: Request, res: Response) => {
 		const hasCommentId = Number.isFinite(postId);
 
 		const query = hasCommentId
-			? 'SELECT id, post_id, content, author, created_at FROM comments WHERE post_id = ? ORDER BY created_at DESC'
-			: 'SELECT id, post_id, content, author, created_at FROM comments ORDER BY created_at DESC';
+			? 'SELECT id, post_id, content, author, created_at FROM blog_comments WHERE post_id = ? ORDER BY created_at DESC'
+			: 'SELECT id, post_id, content, author, created_at FROM blog_comments ORDER BY created_at DESC';
 
 		const stmt = db.prepare(query);
 		const comments = hasCommentId ? stmt.all(postId) : stmt.all();
@@ -118,7 +118,7 @@ router.post('/post_comment', (req: Request, res: Response) => {
 	try {
 		const {post_id, content, author} = req.body;
 
-		const stmt = db.prepare('INSERT INTO comments (post_id, content, author) VALUES (?, ?, ?)');
+		const stmt = db.prepare('INSERT INTO blog_comments (post_id, content, author) VALUES (?, ?, ?)');
 		const info = stmt.run(post_id, content, author);
 
 		res.json({status: 'success', info: info});
