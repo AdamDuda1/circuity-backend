@@ -16,7 +16,16 @@ db.exec(`
 	    media_type	TEXT NOT NULL,
         media_link	TEXT NOT NULL,
         created_at	DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
+    );
+
+	CREATE TABLE IF NOT EXISTS comments
+    (
+        id			INTEGER PRIMARY KEY,
+	    post_id		INTEGER REFERENCES blog(id) ON DELETE CASCADE,
+	    content		TEXT NOT NULL,
+	    author		TEXT NOT NULL,
+	    created_at	DATETIME DEFAULT CURRENT_TIMESTAMP
+	)
 `);
 
 /**
@@ -58,20 +67,59 @@ router.get('/read', (req: Request, res: Response) => {
 		const blogPosts = stmt.all(limit, offset);
 		res.json(blogPosts);
 	} catch (error) {
-		res.status(500).json({error: 'Failed to fetch posts'});
+		res.status(500).json({error: 'Failed to fetch posts!'});
 	}
 });
 
 /**
- * POST /b1/blog/create? - Create a new blog post with title, text, and media_link
+ * POST /v1/blog/create? - Create a new blog post with title, text, and media_link
  * Body: { title: string, text: string, media_link: string }
  */
-router.post('/create', auth,  (req: Request, res: Response) => {
+router.post('/create', auth, (req: Request, res: Response) => {
 	try {
 		const {title, text, media_type, media_link} = req.body;
 
 		const stmt = db.prepare('INSERT INTO blog (title, text, media_type, media_link) VALUES (?, ?, ?, ?)');
 		const info = stmt.run(title, text, media_type, media_link);
+
+		res.json({status: 'success', info: info});
+	} catch (error) {
+		res.status(500).json({error: 'Failed to post!!!!'});
+	}
+});
+
+/**
+ * GET /v1/blog/read_comments - Fetch all blog comments, optionally filtered by comment_id (blog post ID)
+ */
+router.get('/read_comments', (req: Request, res: Response) => {
+	try {
+		const postIdRaw = req.query.post_id;
+		const postId = Number(postIdRaw);
+		const hasCommentId = Number.isFinite(postId);
+
+		const query = hasCommentId
+			? 'SELECT id, post_id, content, author, created_at FROM comments WHERE post_id = ? ORDER BY created_at DESC'
+			: 'SELECT id, post_id, content, author, created_at FROM comments ORDER BY created_at DESC';
+
+		const stmt = db.prepare(query);
+		const comments = hasCommentId ? stmt.all(postId) : stmt.all();
+
+		res.json(comments);
+	} catch (error) {
+		res.status(500).json({error: 'Failed to fetch comments!'});
+	}
+});
+
+/**
+ * POST /v1/blog/post_comment? - Create a new anonymous (public) comment under a specified blog post
+ * Body: { comment_id, content, author }
+ */
+router.post('/post_comment', (req: Request, res: Response) => {
+	try {
+		const {post_id, content, author} = req.body;
+
+		const stmt = db.prepare('INSERT INTO comments (post_id, content, author) VALUES (?, ?, ?)');
+		const info = stmt.run(post_id, content, author);
 
 		res.json({status: 'success', info: info});
 	} catch (error) {
