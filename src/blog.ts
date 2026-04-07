@@ -45,6 +45,7 @@ router.get('/single_post', (req: Request, res: Response) => {
 			res.status(404).json({error: 'Post not found'});
 		}
 	} catch (error) {
+		console.log('Failed to fetch post: ' + error);
 		res.status(500).json({error: 'Failed to fetch post'});
 	}
 });
@@ -67,6 +68,7 @@ router.get('/read', (req: Request, res: Response) => {
 		const blogPosts = stmt.all(limit, offset);
 		res.json(blogPosts);
 	} catch (error) {
+		console.log('Failed to fetch posts: ' + error);
 		res.status(500).json({error: 'Failed to fetch posts!'});
 	}
 });
@@ -84,7 +86,8 @@ router.post('/create', auth, (req: Request, res: Response) => {
 
 		res.json({status: 'success', info: info});
 	} catch (error) {
-		res.status(500).json({error: 'Failed to post!!!!'});
+		console.log('Failed to post blog: ' + error);
+		res.status(500).json({error: 'Failed to post blog!!!!'});
 	}
 });
 
@@ -106,6 +109,7 @@ router.get('/read_comments', (req: Request, res: Response) => {
 
 		res.json(comments);
 	} catch (error) {
+		console.log('Failed to fetch comments: ' + error);
 		res.status(500).json({error: 'Failed to fetch comments!'});
 	}
 });
@@ -123,7 +127,8 @@ router.post('/post_comment', (req: Request, res: Response) => {
 
 		res.json({status: 'success', info: info});
 	} catch (error) {
-		res.status(500).json({error: 'Failed to post!!!!'});
+		console.log('Failed to post comment: ' + error);
+		res.status(500).json({error: 'Failed to post comment!!!!'});
 	}
 });
 
