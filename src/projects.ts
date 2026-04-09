@@ -60,15 +60,15 @@ router.get('/get', (req: Request, res: Response) => {
  * Body:
  * {
  *   content: string;
- *   author: string;
+ *   author?: string; // defaults to 'anonymous'
  *   name: string;
- *   description: string;
+ *   description?: string; // defaults to 'no description'
  *   secret: string;
  *   visibility?: 'public' | 'private'; // defaults to 'private'
  * }
  *
  * Validation:
- * - content, author, name, description, secret are required non-empty strings
+ * - content, name, secret are required non-empty strings
  *
  * Response 200:
  * {
@@ -90,28 +90,28 @@ router.post('/create', (req: Request, res: Response) => {
 	try {
 		const {content, author, name, description, secret} = req.body;
 		const visibility = req.body.visibility === 'public' ? 'public' : 'private';
+		const normalizedAuthor = typeof author === 'string' && author.trim() ? author.trim() : 'anonymous';
+		const normalizedDescription = typeof description === 'string' && description.trim() ? description.trim() : 'no description';
 
 		if (
 			typeof content !== 'string' || !content.trim() ||
-			typeof author !== 'string' || !author.trim() ||
 			typeof name !== 'string' || !name.trim() ||
-			typeof description !== 'string' || !description.trim() ||
 			typeof secret !== 'string' || !secret.trim()
 		) {
 			return res.status(400).json({error: 'Invalid project payload'});
 		}
 
 		const stmt = db.prepare('INSERT INTO projects (content, author, name, description, visibility, secret) VALUES (?, ?, ?, ?, ?, ?)');
-		const info = stmt.run(content.trim(), author.trim(), name.trim(), description.trim(), visibility, secret.trim());
+		const info = stmt.run(content.trim(), normalizedAuthor, name.trim(), normalizedDescription, visibility, secret.trim());
 
 		res.json({
 			status: 'success',
 			project: {
 				id: info.lastInsertRowid,
 				content: content.trim(),
-				author: author.trim(),
+				author: normalizedAuthor,
 				name: name.trim(),
-				description: description.trim(),
+				description: normalizedDescription,
 				visibility,
 			}
 		});
