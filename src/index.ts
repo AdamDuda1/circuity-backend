@@ -9,6 +9,8 @@ const port = Number(process.env.PORT ?? 2137);
 
 const defaultAllowedOrigins = [
 	'https://circuity.deltos.space',
+	'https://circuity.vercel.apps',
+	'https://circuity.adamd.pl.eu.org',
 	'http://localhost:4200'
 ];
 
