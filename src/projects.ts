@@ -1,6 +1,7 @@
 import { Request, Response, Router } from 'express';
 import Database from 'better-sqlite3';
 import path from "path";
+import { auth } from './admin_auth';
 
 const router = Router();
 const dbPath = process.env.DB_PATH ?? path.resolve(process.cwd(), 'circuity.db');
@@ -162,6 +163,119 @@ router.post('/single-project', (req: Request, res: Response) => {
 	} catch (error) {
 		console.log('Failed to fetch project content: ' + error);
 		res.status(500).json({error: 'Failed to fetch project content!'});
+	}
+});
+
+/**
+ * POST /v1/projects/delete
+ * Deletes one project by secret key
+ * Body: { secret: string }
+ *
+ * Response 200: { status: 'success' }
+ * Response 400: { error: 'Invalid secret payload' }
+ * Response 404: { error: 'Project not found' }
+ */
+router.post('/delete', (req: Request, res: Response) => {
+	try {
+		const {secret} = req.body;
+
+		if (typeof secret !== 'string' || !secret.trim()) {
+			return res.status(400).json({error: 'Invalid secret payload'});
+		}
+
+		const stmt = db.prepare('DELETE FROM projects WHERE secret = ?');
+		const result = stmt.run(secret.trim());
+
+		if (result.changes === 0) {
+			return res.status(404).json({error: 'Project not found'});
+		}
+
+		res.json({status: 'success'});
+	} catch (error) {
+		console.log('Failed to delete project: ' + error);
+		res.status(500).json({error: 'Failed to delete project!'});
+	}
+});
+
+/**
+ * GET /v1/projects/admin/list
+ * Auth required. Returns all projects for admin management.
+ */
+router.get('/admin/list', auth, (req: Request, res: Response) => {
+	try {
+		const stmt = db.prepare(
+			'SELECT id, content, author, name, description, visibility, created_at FROM projects ORDER BY created_at DESC'
+		);
+		const projects = stmt.all();
+		res.json(projects);
+	} catch (error) {
+		console.log('Failed to fetch projects for admin: ' + error);
+		res.status(500).json({error: 'Failed to fetch projects!'});
+	}
+});
+
+/**
+ * PATCH /v1/projects/admin/:id
+ * Auth required. Updates content, author and description.
+ */
+router.patch('/admin/:id', auth, (req: Request, res: Response) => {
+	try {
+		const id = Number(req.params.id);
+		const {content, author, description} = req.body as {
+			content?: unknown;
+			author?: unknown;
+			description?: unknown;
+		};
+
+		if (!Number.isInteger(id) || id < 1) {
+			return res.status(400).json({error: 'Invalid project id'});
+		}
+
+		if (
+			typeof content !== 'string' || !content.trim() ||
+			typeof author !== 'string' || !author.trim() ||
+			typeof description !== 'string' || !description.trim()
+		) {
+			return res.status(400).json({error: 'Invalid project payload'});
+		}
+
+		const stmt = db.prepare('UPDATE projects SET content = ?, author = ?, description = ? WHERE id = ?');
+		const result = stmt.run(content.trim(), author.trim(), description.trim(), id);
+
+		if (result.changes === 0) {
+			return res.status(404).json({error: 'Project not found'});
+		}
+
+		res.json({status: 'success'});
+	} catch (error) {
+		console.log('Failed to update project: ' + error);
+		res.status(500).json({error: 'Failed to update project!'});
+	}
+});
+
+/**
+ * DELETE /v1/projects/admin/:id
+ * Auth required. Deletes one project by id.
+ */
+router.delete('/admin/:id', auth, (req: Request, res: Response) => {
+	try {
+		const id = Number(req.params.id);
+
+		if (!Number.isInteger(id) || id < 1) {
+			return res.status(400).json({error: 'Invalid project id'});
+		}
+
+		const stmt = db.prepare('DELETE FROM projects WHERE id = ?');
+		const result = stmt.run(id);
+
+		if (result.changes === 0) {
+			return res.status(404).json({error: 'Project not found'});
+		}
+
+		res.json({status: 'success'});
+	} catch (error) {
+		console.log('Failed to delete project by id: ' + error);
+		res.status(500).json({error: 'Failed to delete project!'});
 	}
 });
 
